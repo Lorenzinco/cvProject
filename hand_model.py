@@ -55,17 +55,29 @@ def main():
 	pTime = 0
 	cTime = 0
 	detector = HandDetector()
+	last = [0] * 5
 	while 1:
 		success, img = cap.read()
 		img = detector.find_hands(img)
 		lm_list = detector.find_position(img)
-		# if lm_list:
-		# 	print(lm_list[4])
+		if lm_list:
+			n5 = lm_list[5]
+			# n17 = lm_list[17]
+			n0 = lm_list[0]
+			# print(n5, n17, n0)
+			last.pop(0)
+			last.append(n5[1] - n0[1])
+			# print(last[0], last[-1])
+			if last[0] < 0 and last[-1] > 0:
+				print("Gesture 1 Detected")
+			elif last[0] > 0 and last[-1] < 0:
+				print("Gesture 2 Detected")
 
 		cTime = time.time()
 		fps = 1/(cTime - pTime)
 		pTime = cTime
 
+		# print(fps)
 		cv2.putText(img, str(int(fps)), (10, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 255), 3)
 		cv2.imshow("Image", img)
 		cv2.waitKey(1)
