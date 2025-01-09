@@ -115,10 +115,13 @@ def main():
 			else:
 				point_history.append([0, 0])
 
+			#print(hand_sign_id)
+
 			if hand_sign_id == 2:
 				# Mirror Pointer on X
-				print(point_history[-1])
-				pyautogui.moveTo(point_history[-1][0] * dx, point_history[-1][1] * dy)
+				#print(point_history[-1])
+
+				pyautogui.moveTo(point_history[-1][0] * dx, point_history[-1][1] * dy,_pause=False)
 
 
 		if not SHOW:
