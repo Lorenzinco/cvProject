@@ -1,5 +1,5 @@
-import cv2
 import mediapipe as mp
+import cv2
 import time
 import utils
 
@@ -30,10 +30,8 @@ class HandDetector():
 		if self.lms:
 			myHand = self.lms[handNo]
 			for id, lm in enumerate(myHand.landmark):
-				# print(id, lm)
 				h, w, c = img.shape
 				cx, cy = int(lm.x * w), int(lm.y * h)
-				# print(id, cx, cy)
 				self.lm_list.append([id, cx, cy])
 				if draw:
 					cv2.circle(img, (cx,cy), 5, (255,0,255), cv2.FILLED)
@@ -51,7 +49,6 @@ class HandDetector():
 	
 
 def main():
-
 	camera_index = utils.choose_camera()
 	cap = cv2.VideoCapture(camera_index)
 
@@ -59,27 +56,9 @@ def main():
 	cTime = 0
 	detector = HandDetector(model_complexity=1)
 
-	detector = HandDetector()
-	last = [0] * 5
 	while 1:
 		success, img = cap.read()
-
 		img = detector.find_hands(img)
-			
-		
-		lm_list = detector.find_position(img)
-		if lm_list:
-			n5 = lm_list[5]
-			# n17 = lm_list[17]
-			n0 = lm_list[0]
-			# print(n5, n17, n0)
-			last.pop(0)
-			last.append(n5[1] - n0[1])
-			# print(last[0], last[-1])
-			if last[0] < 0 and last[-1] > 0:
-				print("Gesture 1 Detected")
-			elif last[0] > 0 and last[-1] < 0:
-				print("Gesture 2 Detected")
 
 		cTime = time.time()
 		fps = 1/(cTime - pTime)
