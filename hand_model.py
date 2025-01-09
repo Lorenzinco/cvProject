@@ -51,6 +51,8 @@ class HandDetector():
 def main():
 	camera_index = utils.choose_camera()
 	cap = cv2.VideoCapture(camera_index)
+	VIDEO_WIDTH = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+	VIDEO_HEIGHT = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
 	pTime = 0
 	cTime = 0
