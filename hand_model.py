@@ -1,7 +1,21 @@
 import cv2
 import mediapipe as mp
 import time
+from simple_term_menu import TerminalMenu
 
+def returnCameraIndexes():
+    # checks the first 10 indexes.
+    index = 0
+    arr = []
+    i = 10
+    while i > 0:
+        cap = cv2.VideoCapture(index)
+        if cap.read()[0]:
+            arr.append(index)
+            cap.release()
+        index += 1
+        i -= 1
+    return arr
 
 class HandDetector():
 	def __init__(self, mode=False, max_hands=2, model_complexity=1, detection_con=0.5, trac_con=0.5):
@@ -48,17 +62,36 @@ class HandDetector():
 			else:
 				fingers.append(0)
 		return fingers
+	
+def choose_camera():
+	indexes = returnCameraIndexes()
+	menu = TerminalMenu(["Camera " + str(i) for i in indexes])
+	menu_entry_index = menu.show()
+	return indexes[menu_entry_index]
+
+
 
 
 def main():
-	cap = cv2.VideoCapture(0)
+	# list all videocapture devices 
+	
+	camera_index = choose_camera()
+	cap = cv2.VideoCapture(camera_index)
+
 	pTime = 0
 	cTime = 0
+	detector = HandDetector(model_complexity=1)
+	frame = 0
+	old_hands = None
+
 	detector = HandDetector()
 	last = [0] * 5
 	while 1:
 		success, img = cap.read()
+
 		img = detector.find_hands(img)
+			
+		
 		lm_list = detector.find_position(img)
 		if lm_list:
 			n5 = lm_list[5]
@@ -81,6 +114,8 @@ def main():
 		cv2.putText(img, str(int(fps)), (10, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 255), 3)
 		cv2.imshow("Image", img)
 		cv2.waitKey(1)
+		frame += 1
+		frame %= 2
 
 
 if __name__ == '__main__':
