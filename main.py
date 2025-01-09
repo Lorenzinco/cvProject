@@ -11,13 +11,23 @@ from hand_model import HandDetector
 
 from model import KeyPointClassifier
 from model import PointHistoryClassifier
+import threading
 
 
 
 
 SHOW = 1
+POINT_GESTURE = 2
+OPEN_HAND_GESTURE = 0
+VELOCITY_THRESHOLD = 235
+GESTURE_DELAY = 1
 
+gesture_found = False
 
+def reset_gesture_found():
+	global gesture_found
+	time.sleep(GESTURE_DELAY)
+	gesture_found = False
 
 def pre_process_landmark(landmark_list):
 	temp_landmark_list = copy.deepcopy(landmark_list)
@@ -83,45 +93,81 @@ def main():
 	keypoint_classifier = KeyPointClassifier()
 	point_history_classifier = PointHistoryClassifier()
 	
-	history_length = 16
-	point_history = deque(maxlen=history_length)
+	point_history_length = 16
+	gesture_history_length = 5
+	point_history = deque(maxlen=point_history_length)
+	position_history = deque(maxlen=gesture_history_length)
 
 	screen_size_x, screen_size_y = pyautogui.size()
 	dx = screen_size_x / VIDEO_WIDTH
 	dy = screen_size_y / VIDEO_HEIGHT
+
+	global gesture_found
 	
 	while 1:
+		
 		success, img = cap.read()
+		img = cv2.flip(img, 1) # mirror the image
 		img = detector.find_hands(img, draw=SHOW)
 
 		lm_list = detector.find_position(img, draw=SHOW)
+		position_history.append(lm_list)
 		if lm_list:
 			n0, n5 = lm_list[0], lm_list[5]
 			last.pop(0)
 			last.append(n5[1] - n0[1])
-			if abs(last[0] - last[-1]) > 100:
-				if last[0] < 0 and last[-1] > 0:
-					print("Gesture 1 Detected")
-				elif last[0] > 0 and last[-1] < 0:
-					print("Gesture 2 Detected")
-			
-			# landmark_list = calc_landmark_list(img, lm_list)
+
+
 			landmark_list = [[x, y] for _, x, y in lm_list]
 			pre_processed_landmark_list = pre_process_landmark(landmark_list)
 
 			hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
-			if hand_sign_id == 2:  # Point gesture
+			if hand_sign_id == POINT_GESTURE:
 				point_history.append(lm_list[8][1:])
+
+			elif hand_sign_id == OPEN_HAND_GESTURE:
+				point_history.append([0, 0])
+				if len(position_history) == gesture_history_length:
+					first_point = position_history[0]
+					last_point = position_history[-1]
+
+					# print(first_point, last_point)
+					if len(first_point)>5 and len(last_point)>5:
+						first_n0, last_n0 = first_point[0], last_point[0]
+						first_n5, last_n5 = first_point[5], last_point[5]
+						
+						velocity = last_n5[1] - first_n5[1]
+
+						if abs(velocity) > VELOCITY_THRESHOLD and not gesture_found:
+							if last[0] < 0 and last[-1] > 0:
+								gesture_found = True
+								
+
+								threading.Thread(target=reset_gesture_found).start()
+								print("Gesture 1 Detected")
+								print(velocity)
+								pyautogui.press('left',_pause=False)
+
+							elif last[0] > 0 and last[-1] < 0:
+								gesture_found = True
+								threading.Thread(target=reset_gesture_found).start()
+								print(velocity)
+								print("Gesture 2 Detected")
+								pyautogui.press('right',_pause=False)
 			else:
 				point_history.append([0, 0])
+
+			
+			
+
+			
 
 			#print(hand_sign_id)
 
 			if hand_sign_id == 2:
 				# Mirror Pointer on X
 				#print(point_history[-1])
-
-				pyautogui.moveTo(point_history[-1][0] * dx, point_history[-1][1] * dy,_pause=False)
+				pyautogui.moveTo(point_history[-1][0] * dx, point_history[-1][1] * dy, _pause=False)
 
 
 		if not SHOW:
