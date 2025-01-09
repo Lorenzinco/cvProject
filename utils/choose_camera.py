@@ -18,5 +18,5 @@ def returnCameras():
 def choose_camera():
 	options = returnCameras()
 	title = 'Please choose a Camera from the cameras avaliable below:'
-	camera_index, index = pick(options,title)
+	camera_index, index = pick(options,title, multiselect=False)
 	return index
