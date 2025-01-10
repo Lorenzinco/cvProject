@@ -32,20 +32,11 @@ class HandDetector():
 			for id, lm in enumerate(myHand.landmark):
 				h, w, c = img.shape
 				cx, cy = int(lm.x * w), int(lm.y * h)
-				self.lm_list.append([id, cx, cy])
+				self.lm_list.append([cx, cy])
 				if draw:
 					cv2.circle(img, (cx,cy), 5, (255,0,255), cv2.FILLED)
 		return self.lm_list
 
-
-	def fingers_up(self):
-		fingers = []
-		for id in range(8,21,4):
-			if self.lm_list[id][2] < self.lm_list[id - 2][2]:
-				fingers.append(1)
-			else:
-				fingers.append(0)
-		return fingers
 	
 
 def main():
@@ -61,6 +52,7 @@ def main():
 	while 1:
 		success, img = cap.read()
 		img = detector.find_hands(img)
+		lm_list = detector.find_position(img)
 
 		cTime = time.time()
 		fps = 1/(cTime - pTime)
