@@ -1,6 +1,7 @@
 import cv2
 import mediapipe as mp
 from mediapipe import solutions
+from mediapipe.tasks import python
 from mediapipe.framework.formats import landmark_pb2
 import numpy as np
 import time
@@ -19,7 +20,10 @@ class HandModel():
 		self.mp_hands = solutions.hands
 		self.results = None
 		self.options = HandLandmarkerOptions(
-			base_options=BaseOptions(model_asset_path='model/hand_model/hand_landmarker.task'),
+			base_options=BaseOptions(
+				model_asset_path='model/hand_model/hand_landmarker.task',
+				delegate=python.BaseOptions.Delegate.GPU,
+			),
 			running_mode=VisionRunningMode.LIVE_STREAM,
 			result_callback=self.update_result
 		)
@@ -52,7 +56,9 @@ class HandModel():
 
 
 	def get_landmarks(self, frame, timestamp):
-		self.mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+		rgba_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+		rgba_frame = np.asarray(rgba_frame, dtype=np.uint8)
+		self.mp_image = mp.Image(image_format=mp.ImageFormat.SRGBA, data=rgba_frame)
 		self.landmarker.detect_async(self.mp_image, timestamp)
 		return self.results
 

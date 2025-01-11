@@ -22,7 +22,8 @@ FPS_LOCK = config.get('Settings', {}).get('fps_lock', 30)
 VELOCITY_THRESHOLD = config.get('Gestures', {}).get('velocity_threshold', 100)
 COOLDOWN_GESTURE_CONST = config.get('Gestures', {}).get('cooldown_gesture_const', 0.5)
 LM_HISTORY_LEN = config.get('Gestures', {}).get('lm_history_len', 5)
-POINTER_SENSITIVITY = config.get('Pointer', {}).get('pointer_sensitivity', 100)
+POINTER_SENSITIVITY = config.get('Pointer', {}).get('pointer_sensitivity', 800)
+DEAD_ZONE=config.get('Pointer', {}).get('dead_zone', 0.05)
 
 ############################## Globals ##############################
 
@@ -35,6 +36,7 @@ else:
 CAP = cv2.VideoCapture(camera_index)
 
 LM_HISTORY = deque(maxlen=LM_HISTORY_LEN)
+WLM_HISTORY = deque(maxlen=LM_HISTORY_LEN)
 MODEL = HandModel()
 KEYPOINT_CLASSIFIER = KeyPointClassifier()
 CLOCK = Clock(FPS_LOCK)
@@ -91,6 +93,19 @@ def gesture(left=False):
 	print(f"Gesture {direction}")
 	pyautogui.press(direction, _pause=False)
 
+def get_pointing_direction(wlm_list, center_coordinates):
+	wn5, wn8 = wlm_list[5], wlm_list[8]
+	direction = (wn8[0] - wn5[0], wn8[1] - wn5[1], wn8[2] - wn5[2])
+	norm = (direction[0]**2 + direction[1]**2 + direction[2]**2)**0.5
+	if norm < DEAD_ZONE:
+		# print("Dead Zone")
+		return center_coordinates
+	
+	direction = (direction[0]/norm, direction[1]/norm, direction[2]/norm)
+	new_x = center_coordinates[0] + direction[0] * POINTER_SENSITIVITY
+	new_y = center_coordinates[1] + direction[1] * POINTER_SENSITIVITY
+	# print(new_x,new_y, end='\r')
+	return new_x, new_y
 
 def main():
 	prev_loc_x, prev_loc_y = 0, 0
@@ -105,6 +120,7 @@ def main():
 		results = MODEL.get_landmarks(img, int(CLOCK.now()*1000))
 
 		lm_list = []
+		wlm_list = []
 		if not (results is None):
 			if results.handedness:
 				for lm in results.hand_landmarks[0]:
@@ -112,25 +128,37 @@ def main():
 						round(lm.x * VIDEO_WIDTH),
 						round(lm.y * VIDEO_HEIGHT),
 					])
+			
+				for lm in results.hand_world_landmarks[0]:
+					wlm_list.append([
+						round(lm.x,3),
+						round(lm.y,3),
+						round(lm.z,3),
+					])
 				# print(results.handedness[0][0].category_name)
 				# print(results.hand_landmarks[0][8].x * VIDEO_WIDTH, results.hand_landmarks[0][8].y * VIDEO_HEIGHT, results.hand_landmarks[0][8].z * VIDEO_WIDTH, end='\r')
 				# print(results.hand_landmarks)
 				# print(results.hand_world_landmarks)
 
-		if lm_list:
+		if lm_list and wlm_list:
 			n0, n5 = lm_list[0], lm_list[5]
 			LM_HISTORY.append(n5[0] - n0[0])
+			wn5, wn8 = wlm_list[5], wlm_list[8]
+			# WLM_HISTORY.append(wn8 - wn5)
 
 			pre_processed_landmark_list = pre_process_landmark(lm_list)
 			hand_sign_id = KEYPOINT_CLASSIFIER(pre_processed_landmark_list)
 			
 			if hand_sign_id == POINT_GESTURE:
-				x = interp(lm_list[8][0], (0, VIDEO_WIDTH), (-POINTER_SENSITIVITY, SCREEN_WIDTH+POINTER_SENSITIVITY))
-				y = interp(lm_list[8][1], (0, VIDEO_HEIGHT), (-POINTER_SENSITIVITY, SCREEN_HEIGHT+POINTER_SENSITIVITY))
-				if x < 0: x = 0
-				if y < 0: y = 0
-				if x >= SCREEN_WIDTH: x = SCREEN_WIDTH-1
-				if y >= SCREEN_HEIGHT: y = SCREEN_HEIGHT-1
+				# calculate the pointing direction starting from the index finger base to the tip
+				center_coordinates = (n5[0], n5[1])
+				x,y = get_pointing_direction(wlm_list,center_coordinates=center_coordinates)
+				# x = interp(lm_list[8][0], (0, VIDEO_WIDTH), (-POINTER_SENSITIVITY, SCREEN_WIDTH+POINTER_SENSITIVITY))
+				# y = interp(lm_list[8][1], (0, VIDEO_HEIGHT), (-POINTER_SENSITIVITY, SCREEN_HEIGHT+POINTER_SENSITIVITY))
+				if x < 0: x = 5
+				if y < 0: y = 5
+				if x >= SCREEN_WIDTH: x = SCREEN_WIDTH-5
+				if y >= SCREEN_HEIGHT: y = SCREEN_HEIGHT-5
 				x = prev_loc_x + (x - prev_loc_x) / SMOOTHING
 				y = prev_loc_y + (y - prev_loc_y) / SMOOTHING
 				pyautogui.moveTo(int(x), int(y), _pause=False)

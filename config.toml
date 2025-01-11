@@ -9,4 +9,5 @@ cooldown_gesture_const = 0.5
 lm_history_len = 5
 
 [Pointer]
-pointer_sensitivity = 300
+pointer_sensitivity = 800
+deadzone = 0.05
