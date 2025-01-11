@@ -104,33 +104,46 @@ def main():
 		img = cv2.flip(img, 1)
 		results = MODEL.get_landmarks(img, int(CLOCK.now()*1000))
 
-		# if lm_list:
-		# 	n0, n5 = lm_list[0], lm_list[5]
-		# 	LM_HISTORY.append(n5[0] - n0[0])
+		lm_list = []
+		if not (results is None):
+			if results.handedness:
+				for lm in results.hand_landmarks[0]:
+					lm_list.append([
+						round(lm.x * VIDEO_WIDTH),
+						round(lm.y * VIDEO_HEIGHT),
+					])
+				# print(results.handedness[0][0].category_name)
+				# print(results.hand_landmarks[0][8].x * VIDEO_WIDTH, results.hand_landmarks[0][8].y * VIDEO_HEIGHT, results.hand_landmarks[0][8].z * VIDEO_WIDTH, end='\r')
+				# print(results.hand_landmarks)
+				# print(results.hand_world_landmarks)
 
-		# 	pre_processed_landmark_list = pre_process_landmark(lm_list)
-		# 	hand_sign_id = KEYPOINT_CLASSIFIER(pre_processed_landmark_list)
+		if lm_list:
+			n0, n5 = lm_list[0], lm_list[5]
+			LM_HISTORY.append(n5[0] - n0[0])
+
+			pre_processed_landmark_list = pre_process_landmark(lm_list)
+			hand_sign_id = KEYPOINT_CLASSIFIER(pre_processed_landmark_list)
 			
-		# 	if hand_sign_id == POINT_GESTURE:
-		# 		x = interp(lm_list[8][0], (0, VIDEO_WIDTH), (-POINTER_SENSITIVITY, SCREEN_WIDTH+POINTER_SENSITIVITY))
-		# 		y = interp(lm_list[8][1], (0, VIDEO_HEIGHT), (-POINTER_SENSITIVITY, SCREEN_HEIGHT+POINTER_SENSITIVITY))
-		# 		if x < 0: x = 0
-		# 		if y < 0: y = 0
-		# 		if x >= SCREEN_WIDTH: x = SCREEN_WIDTH-1
-		# 		if y >= SCREEN_HEIGHT: y = SCREEN_HEIGHT-1
-		# 		x = prev_loc_x + (x - prev_loc_x) / SMOOTHING
-		# 		y = prev_loc_y + (y - prev_loc_y) / SMOOTHING
-		# 		pyautogui.moveTo(int(x), int(y), _pause=False)
-		# 		prev_loc_x = x
-		# 		prev_loc_y = y
+			if hand_sign_id == POINT_GESTURE:
+				x = interp(lm_list[8][0], (0, VIDEO_WIDTH), (-POINTER_SENSITIVITY, SCREEN_WIDTH+POINTER_SENSITIVITY))
+				y = interp(lm_list[8][1], (0, VIDEO_HEIGHT), (-POINTER_SENSITIVITY, SCREEN_HEIGHT+POINTER_SENSITIVITY))
+				if x < 0: x = 0
+				if y < 0: y = 0
+				if x >= SCREEN_WIDTH: x = SCREEN_WIDTH-1
+				if y >= SCREEN_HEIGHT: y = SCREEN_HEIGHT-1
+				x = prev_loc_x + (x - prev_loc_x) / SMOOTHING
+				y = prev_loc_y + (y - prev_loc_y) / SMOOTHING
+				pyautogui.moveTo(int(x), int(y), _pause=False)
+				prev_loc_x = x
+				prev_loc_y = y
 
-		# 	elif hand_sign_id == OPEN_HAND_GESTURE:
-		# 		velocity = LM_HISTORY[-1] - LM_HISTORY[0]
-		# 		if abs(velocity) > VELOCITY_THRESHOLD and len(LM_HISTORY) == LM_HISTORY_LEN:
-		# 			if LM_HISTORY[0] < 0 and LM_HISTORY[-1] > 0:
-		# 				gesture(left=True)
-		# 			elif LM_HISTORY[0] > 0 and LM_HISTORY[-1] < 0:
-		# 				gesture(left=False)
+			elif hand_sign_id == OPEN_HAND_GESTURE:
+				velocity = LM_HISTORY[-1] - LM_HISTORY[0]
+				if abs(velocity) > VELOCITY_THRESHOLD and len(LM_HISTORY) == LM_HISTORY_LEN:
+					if LM_HISTORY[0] < 0 and LM_HISTORY[-1] > 0:
+						gesture(left=True)
+					elif LM_HISTORY[0] > 0 and LM_HISTORY[-1] < 0:
+						gesture(left=False)
 
 		
 		fps = CLOCK.tick()
@@ -141,15 +154,6 @@ def main():
 
 		cv2.putText(img, str(round(fps)), (10, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 255), 3)
 		if not (results is None):
-
-
-			if results.handedness:
-				print(results.handedness[0][0].category_name)
-				print(results.hand_world_landmarks[0][0].z)
-				# print(results.hand_landmarks)
-				# print(results.hand_world_landmarks)
-
-
 			annotated_image = MODEL.draw_landmarks_on_image(img, results)
 			cv2.imshow('Show', annotated_image)
 		else:
