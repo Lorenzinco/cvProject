@@ -1,0 +1,9 @@
+[Settings]
+show = 1
+smoothing = 3
+fps_lock = 30
+
+[Gestures]
+velocity_threshold = 100
+cooldown_gesture_const = 0.5
+lm_history_len = 5
