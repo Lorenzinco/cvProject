@@ -4,6 +4,7 @@ import copy
 import itertools
 import pyautogui
 import platform
+import toml
 from collections import deque
 
 from clock import Clock
@@ -12,13 +13,13 @@ from model import KeyPointClassifier
 
 
 ############################## Options ##############################
-
-SHOW = 1
-SMOOTHING = 3
-FPS_LOCK = 30
-VELOCITY_THRESHOLD = 100
-COOLDOWN_GESTURE_CONST = 0.5
-LM_HISTORY_LEN = 5
+config = toml.load("./config.toml")
+SHOW = config.get('Settings', {}).get('show', True)  # Default: True
+SMOOTHING = config.get('Settings', {}).get('smoothing', 3)  # Default: 3
+FPS_LOCK = config.get('Settings', {}).get('fps_lock', 30)  # Default: 30
+VELOCITY_THRESHOLD = config.get('Gestures', {}).get('velocity_threshold', 100)  # Default: 100
+COOLDOWN_GESTURE_CONST = config.get('Gestures', {}).get('cooldown_gesture_const', 0.5)  # Default: 0.5
+LM_HISTORY_LEN = config.get('Gestures', {}).get('lm_history_len', 5)  # Default: 5
 
 ############################## Globals ##############################
 

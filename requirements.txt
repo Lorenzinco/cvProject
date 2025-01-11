@@ -2,3 +2,5 @@ mediapipe
 opencv-python
 pick
 pyautogui
+tensorflow
+toml
