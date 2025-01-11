@@ -5,6 +5,7 @@ import itertools
 import pyautogui
 import platform
 from collections import deque
+from numpy import interp
 
 from clock import Clock
 from hand_model import HandDetector
@@ -19,6 +20,7 @@ FPS_LOCK = 30
 VELOCITY_THRESHOLD = 100
 COOLDOWN_GESTURE_CONST = 0.5
 LM_HISTORY_LEN = 5
+POINTER_SENSITIVITY = 300
 
 ############################## Globals ##############################
 
@@ -31,7 +33,7 @@ else:
 CAP = cv2.VideoCapture(camera_index)
 
 LM_HISTORY = deque(maxlen=LM_HISTORY_LEN)
-DETECTOR = HandDetector()
+DETECTOR = HandDetector(max_hands=1)
 KEYPOINT_CLASSIFIER = KeyPointClassifier()
 CLOCK = Clock(FPS_LOCK)
 
@@ -42,9 +44,9 @@ POINT_GESTURE = 2
 
 VIDEO_WIDTH = CAP.get(cv2.CAP_PROP_FRAME_WIDTH)
 VIDEO_HEIGHT = CAP.get(cv2.CAP_PROP_FRAME_HEIGHT)
-screen_size_x, screen_size_y = pyautogui.size()
-DX = screen_size_x / VIDEO_WIDTH
-DY = screen_size_y / VIDEO_HEIGHT
+SCREEN_WIDTH, SCREEN_HEIGHT = pyautogui.size()
+DX = SCREEN_WIDTH / VIDEO_WIDTH
+DY = SCREEN_HEIGHT / VIDEO_HEIGHT
 
 ############################## Functions ##############################
 
@@ -112,15 +114,21 @@ def main():
 			hand_sign_id = KEYPOINT_CLASSIFIER(pre_processed_landmark_list)
 			
 			if hand_sign_id == POINT_GESTURE:
-				x = prev_loc_x + (lm_list[8][0]*DX - prev_loc_x) / SMOOTHING
-				y = prev_loc_y + (lm_list[8][1]*DY - prev_loc_y) / SMOOTHING
+				x = interp(lm_list[8][0], (0, VIDEO_WIDTH), (-POINTER_SENSITIVITY, SCREEN_WIDTH+POINTER_SENSITIVITY))
+				y = interp(lm_list[8][1], (0, VIDEO_HEIGHT), (-POINTER_SENSITIVITY, SCREEN_HEIGHT+POINTER_SENSITIVITY))
+				if x < 0: x = 0
+				if y < 0: y = 0
+				if x >= SCREEN_WIDTH: x = SCREEN_WIDTH-1
+				if y >= SCREEN_HEIGHT: y = SCREEN_HEIGHT-1
+				x = prev_loc_x + (x - prev_loc_x) / SMOOTHING
+				y = prev_loc_y + (y - prev_loc_y) / SMOOTHING
 				pyautogui.moveTo(int(x), int(y), _pause=False)
 				prev_loc_x = x
 				prev_loc_y = y
 
 			elif hand_sign_id == OPEN_HAND_GESTURE:
 				velocity = LM_HISTORY[-1] - LM_HISTORY[0]
-				if abs(velocity) > VELOCITY_THRESHOLD and len(LM_HISTORY) > 5:
+				if abs(velocity) > VELOCITY_THRESHOLD and len(LM_HISTORY) == LM_HISTORY_LEN:
 					if LM_HISTORY[0] < 0 and LM_HISTORY[-1] > 0:
 						gesture(left=True)
 					elif LM_HISTORY[0] > 0 and LM_HISTORY[-1] < 0:
