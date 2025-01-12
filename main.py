@@ -16,13 +16,17 @@ from model import KeyPointClassifier
 ############################## Options ##############################
 
 config = toml.load("./config.toml")
+
 SHOW = config.get('Settings', {}).get('show', True)
 SMOOTHING = config.get('Settings', {}).get('smoothing', 3)
 FPS_LOCK = config.get('Settings', {}).get('fps_lock', 30)
 GPU_ACCELERATION = config.get('Settings', {}).get('gpu_acceleration', False)
+
 VELOCITY_THRESHOLD = config.get('Gestures', {}).get('velocity_threshold', 100)
 COOLDOWN_GESTURE_CONST = config.get('Gestures', {}).get('cooldown_gesture_const', 0.5)
 LM_HISTORY_LEN = config.get('Gestures', {}).get('lm_history_len', 5)
+
+POINTING = config.get('Pointer', {}).get('pointing', False)
 POINTER_SENSITIVITY = config.get('Pointer', {}).get('pointer_sensitivity', 800)
 DEAD_ZONE=config.get('Pointer', {}).get('dead_zone', 0.05)
 
@@ -99,13 +103,11 @@ def get_pointing_direction(wlm_list, center_coordinates):
 	direction = (wn8[0] - wn5[0], wn8[1] - wn5[1], wn8[2] - wn5[2])
 	norm = (direction[0]**2 + direction[1]**2 + direction[2]**2)**0.5
 	if norm < DEAD_ZONE:
-		# print("Dead Zone")
 		return center_coordinates
 	
 	direction = (direction[0]/norm, direction[1]/norm, direction[2]/norm)
 	new_x = center_coordinates[0] + direction[0] * POINTER_SENSITIVITY
 	new_y = center_coordinates[1] + direction[1] * POINTER_SENSITIVITY
-	# print(new_x,new_y, end='\r')
 	return new_x, new_y
 
 def main():
@@ -129,33 +131,31 @@ def main():
 						round(lm.x * VIDEO_WIDTH),
 						round(lm.y * VIDEO_HEIGHT),
 					])
-			
+
 				for lm in results.hand_world_landmarks[0]:
 					wlm_list.append([
 						round(lm.x,3),
 						round(lm.y,3),
 						round(lm.z,3),
 					])
-				# print(results.handedness[0][0].category_name)
-				# print(results.hand_landmarks[0][8].x * VIDEO_WIDTH, results.hand_landmarks[0][8].y * VIDEO_HEIGHT, results.hand_landmarks[0][8].z * VIDEO_WIDTH, end='\r')
-				# print(results.hand_landmarks)
-				# print(results.hand_world_landmarks)
 
 		if lm_list and wlm_list:
 			n0, n5 = lm_list[0], lm_list[5]
 			LM_HISTORY.append(n5[0] - n0[0])
-			wn5, wn8 = wlm_list[5], wlm_list[8]
-			# WLM_HISTORY.append(wn8 - wn5)
+			wn0 = wlm_list[0]
+			WLM_HISTORY.append(wn0)
 
 			pre_processed_landmark_list = pre_process_landmark(lm_list)
 			hand_sign_id = KEYPOINT_CLASSIFIER(pre_processed_landmark_list)
 			
 			if hand_sign_id == POINT_GESTURE:
 				# calculate the pointing direction starting from the index finger base to the tip
-				center_coordinates = (n5[0], n5[1])
-				x,y = get_pointing_direction(wlm_list,center_coordinates=center_coordinates)
-				# x = interp(lm_list[8][0], (0, VIDEO_WIDTH), (-POINTER_SENSITIVITY, SCREEN_WIDTH+POINTER_SENSITIVITY))
-				# y = interp(lm_list[8][1], (0, VIDEO_HEIGHT), (-POINTER_SENSITIVITY, SCREEN_HEIGHT+POINTER_SENSITIVITY))
+				if POINTING:
+					center_coordinates = (n5[0]*DX, n5[1]*DY)
+					x,y = get_pointing_direction(wlm_list, center_coordinates)
+				else:
+					x = interp(lm_list[8][0], (0, VIDEO_WIDTH), (-POINTER_SENSITIVITY, SCREEN_WIDTH+POINTER_SENSITIVITY))
+					y = interp(lm_list[8][1], (0, VIDEO_HEIGHT), (-POINTER_SENSITIVITY, SCREEN_HEIGHT+POINTER_SENSITIVITY))
 				if x < 0: x = 5
 				if y < 0: y = 5
 				if x >= SCREEN_WIDTH: x = SCREEN_WIDTH-5
@@ -167,17 +167,24 @@ def main():
 				prev_loc_y = y
 
 			elif hand_sign_id == OPEN_HAND_GESTURE:
-				velocity = LM_HISTORY[-1] - LM_HISTORY[0]
-				if abs(velocity) > VELOCITY_THRESHOLD and len(LM_HISTORY) == LM_HISTORY_LEN:
-					if LM_HISTORY[0] < 0 and LM_HISTORY[-1] > 0:
-						gesture(left=True)
-					elif LM_HISTORY[0] > 0 and LM_HISTORY[-1] < 0:
+				# print(wlm_list[0], wlm_list[5], wlm_list[17])
+				if (WLM_HISTORY[0][1] < 0.05 and WLM_HISTORY[-1][1] < 0.05) and (
+					WLM_HISTORY[0][1] > -0.03 and WLM_HISTORY[-1][1] > -0.03):
+					if (WLM_HISTORY[0][0] < -0.04 and WLM_HISTORY[-1][0] > 0.04):
 						gesture(left=False)
+					elif (WLM_HISTORY[0][0] > 0.04 and WLM_HISTORY[-1][0] < -0.04):
+						gesture(left=True)
+				# velocity = LM_HISTORY[-1] - LM_HISTORY[0]
+				# if abs(velocity) > VELOCITY_THRESHOLD and len(LM_HISTORY) == LM_HISTORY_LEN:
+				# 	if LM_HISTORY[0] < 0 and LM_HISTORY[-1] > 0:
+				# 		gesture(left=True)
+				# 	elif LM_HISTORY[0] > 0 and LM_HISTORY[-1] < 0:
+				# 		gesture(left=False)
 
-		
+
 		fps = CLOCK.tick()
 
-		
+
 		if not SHOW:
 			continue
 

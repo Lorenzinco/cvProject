@@ -2,7 +2,7 @@
 show = 1
 smoothing = 3
 fps_lock = 30
-gpu_acceleration = 1
+gpu_acceleration = 0
 
 [Gestures]
 velocity_threshold = 100
@@ -10,5 +10,6 @@ cooldown_gesture_const = 0.5
 lm_history_len = 5
 
 [Pointer]
+pointing = 1
 pointer_sensitivity = 800
 deadzone = 0.05
