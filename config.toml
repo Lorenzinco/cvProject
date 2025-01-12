@@ -2,6 +2,7 @@
 show = 1
 smoothing = 3
 fps_lock = 30
+gpu_acceleration = 1
 
 [Gestures]
 velocity_threshold = 100

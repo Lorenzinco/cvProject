@@ -15,18 +15,31 @@ VisionRunningMode = mp.tasks.vision.RunningMode
 
 
 class HandModel():
-	def __init__(self):
+	def __init__(self, gpu_acceleration=True):
 		self.mp_drawing = solutions.drawing_utils
 		self.mp_hands = solutions.hands
 		self.results = None
-		self.options = HandLandmarkerOptions(
+		if gpu_acceleration:
+			try:
+				base_options=BaseOptions(
+					model_asset_path='model/hand_model/hand_landmarker.task',
+					delegate=python.BaseOptions.Delegate.GPU,
+				)
+			except Exception as e:
+				print(f"Warning, GPU acceleration is set to true but device initialization failed: {e}, falling back on CPU.")
+				base_options=BaseOptions(
+					model_asset_path='model/hand_model/hand_landmarker.task',
+				)
+		else:
 			base_options=BaseOptions(
 				model_asset_path='model/hand_model/hand_landmarker.task',
-				delegate=python.BaseOptions.Delegate.GPU,
-			),
-			running_mode=VisionRunningMode.LIVE_STREAM,
-			result_callback=self.update_result
-		)
+			)
+
+		self.options = HandLandmarkerOptions(
+				base_options=base_options,
+				running_mode=VisionRunningMode.LIVE_STREAM,
+				result_callback=self.update_result
+			)
 		self.landmarker = HandLandmarker.create_from_options(self.options)
 
 
